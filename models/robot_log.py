@@ -10,3 +10,12 @@ class RobotLog(db.Model):
 
     def __repr__(self):
         return f"<Log {self.robot_id} - {self.action} - {self.timestamp}>"
+    
+    def serialize(self):
+        return {
+            'id': self.id,
+            'robot_id': self.robot_id,
+            'action': self.action,
+            'details': self.details,
+            'timestamp': self.timestamp.isoformat()
+        }

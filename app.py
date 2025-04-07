@@ -123,9 +123,9 @@ def check_battery_levels():
                 try:
                     if robot.battery < 20 and robot.status == "available":
                         robot.status = 'NeedCharge'
-
+                        combined_name = f"{CHARGE_POINT}_{robot.robot_id}"
                         # ค้นหาตำแหน่ง charger ที่อยู่ใน Destination
-                        charger =  Destination.query.filter_by(official_name=CHARGE_POINT).first()
+                        charger =  Destination.query.filter_by(official_name=combined_name).first()
                         if charger:
 
                             robot.destination_id = charger.id
@@ -255,7 +255,7 @@ def check_area_robot():
                 socketio.emit("robot_control", robot_control_data)
 
 
-        gevent.sleep(5)  # พักการทำงานเพื่อหลีกเลี่ยงการใช้ CPU สูง
+        gevent.sleep(2)  # พักการทำงานเพื่อหลีกเลี่ยงการใช้ CPU สูง
 
 def check_and_assign_job():
     while True:

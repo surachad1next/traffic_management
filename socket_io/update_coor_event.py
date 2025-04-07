@@ -25,6 +25,7 @@ def handle_update_coordinates(data):
     y = data.get('y')
     angle = data.get('angle')
     poi = data.get('poi')
+    group = data.get('group')
     battery = data.get('battery')
     area = data.get('area', [])
     
@@ -38,6 +39,7 @@ def handle_update_coordinates(data):
         robot.angle = angle
         robot.poi = poi
         robot.battery = battery
+        robot.group = group
         db.session.commit()
 
         if area:

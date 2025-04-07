@@ -9,6 +9,7 @@ class Robot(db.Model):
     y = db.Column(db.Float, nullable=False)
     angle = db.Column(db.Float, nullable=False)
     poi = db.Column(db.String(100), nullable=True)
+    group = db.Column(db.String(100), nullable=True)
     battery = db.Column(db.Float, nullable=True)
     pickup_id = db.Column(db.Integer)
     destination_id = db.Column(db.Integer, db.ForeignKey('destination.id'), nullable=True)

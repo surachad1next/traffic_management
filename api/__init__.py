@@ -8,6 +8,7 @@ from .assigndestination_api import AssignDestination
 from .updatedestination_api import UpdateDestination
 from .jobtoqueue_api import JobToQueue
 from .posttask_api import PostTask
+from .get_log_api import GetLog
 
 api = Api()
 
@@ -21,3 +22,4 @@ api.add_resource(AddDestination, '/destination')
 api.add_resource(JobQueueStatus, '/job/queue/status') 
 api.add_resource(JobToQueue, '/job/queue') 
 api.add_resource(PostTask,'/sony/job')
+api.add_resource(GetLog,'/getlog')
