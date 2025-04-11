@@ -30,6 +30,8 @@ class PostTask(Resource):
 
             assign_robot = None
             assign_data = None
+            group_robot = None
+            
 
             info_data = {
                     "lot_no":data.get('lot_no'),
@@ -66,6 +68,11 @@ class PostTask(Resource):
                     }
                 }
 
+            if(data.get('group')):
+                group_robot = data.get('group')
+
+                assign_data["group"] = group_robot
+                
             # ส่งข้อมูลไปยัง API ของ AssignDestination
             assign_destination_url = "http://localhost:5055/assign/destination"  # เปลี่ยนเป็น URL จริง
             response = requests.post(assign_destination_url, json=assign_data)

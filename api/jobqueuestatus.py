@@ -10,6 +10,7 @@ class JobQueueStatus(Resource):
             'status': job.status,
             'created_at': job.created_at.isoformat(),
             'assigned_to': job.assignedto,
+            'group':job.group,
             'properties': job.properties
         } for job in jobs]
 

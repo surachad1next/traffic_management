@@ -3,7 +3,11 @@ from models.robot import Robot
 from models.database import db
 from models.robot_log import RobotLog
 from models.robot_job import RobotJobQueue
+import requests
+import json
 
+POST_STATE = "http://localhost:8080/update_state"
+POST_STATE_ON = False
 
 def log_action(robot_id, action, details=None):
     # ใช้ UTC เวลาตั้งต้น แล้วแปลงใน Log
@@ -41,6 +45,41 @@ def handle_update_status(data):
             'code': 200
         })
 
+    elif robot.status == 'working' and status == 'pickupdone':
+        job = RobotJobQueue.query.filter_by(assignedto=robot_id,status='processing').first()
+
+        if not job:
+            emit('error', {'message': f'No processing job found for robot {robot_id}'})
+            return
+        
+        log_action(robot_id,f"From working to {status}", f'Robot has pickup completed , currently robot is now delivery.')
+
+        properties = json.loads(job.properties)
+        assign_data = {
+            "message": "Success Transfer",
+            "info": {
+                    "lot_no": properties["ui"]["lot_no"],
+                    "status": "R",
+                    "from_stocker": properties["ui"]["from_stocker"],
+                    "from_level": properties["ui"]["from_level"],
+                    "from_block": properties["ui"]["from_block"],
+                    "to_stocker": properties["ui"]["to_stocker"],
+                    "to_level": properties["ui"]["to_level"],
+                    "to_block": properties["ui"]["to_block"],
+                    "assigned_to": job.assignedto,
+                    "job_no": job.id
+                }
+            }
+
+        assign_destination_url = POST_STATE  # เปลี่ยนเป็น URL จริง
+        if(POST_STATE_ON):
+            response = requests.post(assign_destination_url, json=assign_data)
+
+        emit('status_updated', {
+            'message': f'Robot {robot_id} has pickup completed , currently robot is now delivery',
+            'code': 202
+        })
+
     elif robot.status == 'working' and status == 'done':
         job = RobotJobQueue.query.filter_by(assignedto=robot_id,status='processing').first()
 
@@ -53,9 +92,30 @@ def handle_update_status(data):
         robot.destination = None
         robot.properties = None
         job.status = 'completed'
-        job.properties = None
+        # job.properties = None
         log_action(robot_id,f"From working to {robot.status}", f'Robot has completed {job.destination_name} at the task {job.id}, currently robot is now available.')
         
+        properties = json.loads(job.properties)
+        assign_data = {
+            "message": "Success Transfer",
+            "info": {
+                    "lot_no": properties["ui"]["lot_no"],
+                    "status": "R",
+                    "from_stocker": properties["ui"]["from_stocker"],
+                    "from_level": properties["ui"]["from_level"],
+                    "from_block": properties["ui"]["from_block"],
+                    "to_stocker": properties["ui"]["to_stocker"],
+                    "to_level": properties["ui"]["to_level"],
+                    "to_block": properties["ui"]["to_block"],
+                    "assigned_to": job.assignedto,
+                    "job_no": job.id
+                }
+            }
+
+        assign_destination_url = POST_STATE  # เปลี่ยนเป็น URL จริง
+        if(POST_STATE_ON):
+            response = requests.post(assign_destination_url, json=assign_data)
+
         # ✅ ถ้ามี Parent Job → เปลี่ยนสถานะเป็น completed ด้วย
         if job.parent_job_id:
             parent_job = db.session.get(RobotJobQueue, job.parent_job_id)

@@ -9,6 +9,7 @@ class RobotJobQueue(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.Enum('waiting', 'processing', 'completed', 'preempted', 'incompleted', name='job_status'), default='waiting')
     assignedto = db.Column(db.String(100), nullable=True)
+    group = db.Column(db.String(100), nullable=True)
     properties = db.Column(db.String(1024), nullable=True)
     parent_job_id = db.Column(db.Integer, db.ForeignKey('robot_job_queue.id'), nullable=True)
 

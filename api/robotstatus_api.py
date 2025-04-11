@@ -74,7 +74,8 @@ class RobotStatus(Resource):
                 log_action(robot_id, 'Status updated', f"From {previous_status} to available, job {job.id} to be processing.")
             elif (new_status == "available" and robot.status =='working'):
                 job = RobotJobQueue.query.filter_by(assignedto=robot_id,status='processing').first()
-                destination = Destination.query.filter_by(official_name=ROBOT_HOME).first()
+                combined_name = f"{ROBOT_HOME}_{robot.robot_id}"
+                destination = Destination.query.filter_by(official_name=combined_name).first()
                 robot.destination_id = destination.id  # เคลียร์ destination
                 robot.properties = None
                 robot.status = 'preempted'
@@ -87,7 +88,8 @@ class RobotStatus(Resource):
                 robot.status = new_status
                 log_action(robot_id, 'Status updated', f"From {previous_status} to available, robot currently home.")
             elif (new_status == "charge" and robot.status =='available'):
-                destination = Destination.query.filter_by(official_name=CHARGE_POINT).first()
+                combined_name = f"{CHARGE_POINT}_{robot.robot_id}"
+                destination = Destination.query.filter_by(official_name=combined_name).first()
                 robot.destination_id = destination.id  # เคลียร์ destination
                 robot.properties = None
                 robot.status = new_status

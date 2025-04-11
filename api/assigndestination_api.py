@@ -25,6 +25,7 @@ class AssignDestination(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('robotid', type=str, required=False, help="Robot id which assigned")
         parser.add_argument('pickup_name', type=str, required=False, help="Pickup location cannot be blank")
+        parser.add_argument('group', type=str, required=False, help="Select group of robot")
         parser.add_argument('destination_name', type=str, required=True, help="Destination name cannot be blank")
         parser.add_argument('properties', type=str, help="Robot Properties")
         args = parser.parse_args()
@@ -54,13 +55,24 @@ class AssignDestination(Resource):
         assign_robot = None
         if(args.get('robotid')):
            assign_robot = args.get('robotid')
+
+        group_robot = None
+        if(args.get('group')):
+            group_robot = args.get('group')
             
-        valid_heartbeats = (
+            valid_heartbeats = (
+                Heartbeat.query
+                .join(Robot)  # เชื่อมโยงกับตาราง Robot
+                .filter(Robot.status == 'available',Robot.group == group_robot, Heartbeat.status =="active")
+                .all()
+            )
+        else:
+            valid_heartbeats = (
             Heartbeat.query
             .join(Robot)  # เชื่อมโยงกับตาราง Robot
             .filter(Robot.status == 'available', Heartbeat.status =="active")
             .all()
-        )
+            )   
 
         # if available_robots:
         if valid_heartbeats:
@@ -85,27 +97,48 @@ class AssignDestination(Resource):
                     closest_robot.pickup_id = pickup.id
                     closest_robot.destination_id = destination.id
                     closest_robot.properties = properties
-
-                    pickup_job = RobotJobQueue(
-                        job_description=f"Move to pickup location {pickup.name}",
-                        destination_name=pickup.name,
-                        destination_id=pickup.id,
-                        status='processing',
-                        assignedto=closest_robot.robot_id,
-                        properties=properties
-                    )
+                    if(args.get('group')):
+                        pickup_job = RobotJobQueue(
+                            job_description=f"Move to pickup location {pickup.name}",
+                            destination_name=pickup.name,
+                            destination_id=pickup.id,
+                            status='processing',
+                            assignedto=closest_robot.robot_id,
+                            group=group_robot,
+                            properties=properties
+                        )
+                    else:
+                        pickup_job = RobotJobQueue(
+                            job_description=f"Move to pickup location {pickup.name}",
+                            destination_name=pickup.name,
+                            destination_id=pickup.id,
+                            status='processing',
+                            assignedto=closest_robot.robot_id,
+                            properties=properties
+                        )    
                     db.session.add(pickup_job)
                     db.session.commit()
-                
-                    delivery_job = RobotJobQueue(
-                        job_description=f"Move to destination {destination.name}",
-                        destination_name=destination.name,
-                        destination_id=destination.id,
-                        status='processing',  # เริ่มทำหลัง pickup เสร็จ
-                        assignedto=closest_robot.robot_id,  # ใช้หุ่นยนต์ตัวเดียวกัน
-                        properties=properties,
-                        parent_job_id=pickup_job.id  # เชื่อมโยงกับ Pickup Job
-                    )
+                    if(args.get('group')):
+                        delivery_job = RobotJobQueue(
+                            job_description=f"Move to destination {destination.name}",
+                            destination_name=destination.name,
+                            destination_id=destination.id,
+                            status='processing',  # เริ่มทำหลัง pickup เสร็จ
+                            assignedto=closest_robot.robot_id,  # ใช้หุ่นยนต์ตัวเดียวกัน
+                            group=group_robot,
+                            properties=properties,
+                            parent_job_id=pickup_job.id  # เชื่อมโยงกับ Pickup Job
+                        )
+                    else:
+                        delivery_job = RobotJobQueue(
+                            job_description=f"Move to destination {destination.name}",
+                            destination_name=destination.name,
+                            destination_id=destination.id,
+                            status='processing',  # เริ่มทำหลัง pickup เสร็จ
+                            assignedto=closest_robot.robot_id,  # ใช้หุ่นยนต์ตัวเดียวกัน
+                            properties=properties,
+                            parent_job_id=pickup_job.id  # เชื่อมโยงกับ Pickup Job
+                        )
                     db.session.add(delivery_job)
                     db.session.commit()
 
@@ -126,15 +159,25 @@ class AssignDestination(Resource):
                     closest_robot.status = 'wait_robot'
                     closest_robot.destination_id = destination.id
                     closest_robot.properties = properties
-
-                    delivery_job = RobotJobQueue(
-                        job_description=f"Move to destination {destination.name}",
-                        destination_name=destination.name,
-                        destination_id=destination.id,
-                        status='processing',  # เริ่มทำหลัง pickup เสร็จ
-                        assignedto=closest_robot.robot_id,  # ใช้หุ่นยนต์ตัวเดียวกัน
-                        properties=properties
-                    )
+                    if(args.get('group')):
+                        delivery_job = RobotJobQueue(
+                            job_description=f"Move to destination {destination.name}",
+                            destination_name=destination.name,
+                            destination_id=destination.id,
+                            status='processing',  # เริ่มทำหลัง pickup เสร็จ
+                            assignedto=closest_robot.robot_id,  # ใช้หุ่นยนต์ตัวเดียวกัน
+                            group=group_robot,
+                            properties=properties
+                        )
+                    else:
+                        delivery_job = RobotJobQueue(
+                            job_description=f"Move to destination {destination.name}",
+                            destination_name=destination.name,
+                            destination_id=destination.id,
+                            status='processing',  # เริ่มทำหลัง pickup เสร็จ
+                            assignedto=closest_robot.robot_id,  # ใช้หุ่นยนต์ตัวเดียวกัน
+                            properties=properties
+                        )
                     db.session.add(delivery_job)
                     db.session.commit()
                 
@@ -151,7 +194,17 @@ class AssignDestination(Resource):
         elif(assign_robot):
             
             if pickup:
-
+                if(args.get('group')):
+                    pickup_job = RobotJobQueue(
+                        job_description=f"Move to pickup location {pickup.name}",
+                        destination_name=pickup.name,
+                        destination_id=pickup.id,
+                        status='waiting',
+                        assignedto=assign_robot,
+                        group=group_robot,
+                        properties=properties
+                    )
+                else:
                     pickup_job = RobotJobQueue(
                         job_description=f"Move to pickup location {pickup.name}",
                         destination_name=pickup.name,
@@ -159,10 +212,22 @@ class AssignDestination(Resource):
                         status='waiting',
                         assignedto=assign_robot,
                         properties=properties
+                    )    
+
+                db.session.add(pickup_job)
+                db.session.commit()
+                if(args.get('group')):
+                    delivery_job = RobotJobQueue(
+                        job_description=f"Move to destination {destination.name}",
+                        destination_name=destination.name,
+                        destination_id=destination.id,
+                        status='waiting',  # เริ่มทำหลัง pickup เสร็จ
+                        assignedto=assign_robot,  # ใช้หุ่นยนต์ตัวเดียวกัน
+                        group=group_robot,
+                        properties=properties,
+                        parent_job_id=pickup_job.id  # เชื่อมโยงกับ Pickup Job
                     )
-                    db.session.add(pickup_job)
-                    db.session.commit()
-                
+                else:
                     delivery_job = RobotJobQueue(
                         job_description=f"Move to destination {destination.name}",
                         destination_name=destination.name,
@@ -172,22 +237,32 @@ class AssignDestination(Resource):
                         properties=properties,
                         parent_job_id=pickup_job.id  # เชื่อมโยงกับ Pickup Job
                     )
-                    db.session.add(delivery_job)
-                    db.session.commit()
+                db.session.add(delivery_job)
+                db.session.commit()
 
-                    log_action(assign_robot, 'Assigned destination', f" Destination: {destination.name}")
+                log_action(assign_robot, 'Assigned destination', f" Destination: {destination.name}")
 
-                    return {
-                        'message': f'Robot {assign_robot} is assigned to destination: {destination.name}',
-                        'robot_id': assign_robot,
-                        'pickup_job_id': pickup_job.id,
-                        'delivery_job_id': delivery_job.id,
-                        'pickup': pickup.name,
-                        'destination': destination.name
-                    }, 200
+                return {
+                    'message': f'Robot {assign_robot} is assigned to destination: {destination.name}',
+                    'robot_id': assign_robot,
+                    'pickup_job_id': pickup_job.id,
+                    'delivery_job_id': delivery_job.id,
+                    'pickup': pickup.name,
+                    'destination': destination.name
+                }, 200
 
             else:
-
+                if(args.get('group')):
+                    delivery_job = RobotJobQueue(
+                        job_description=f"Move to destination {destination.name}",
+                        destination_name=destination.name,
+                        destination_id=destination.id,
+                        status='waiting',  # เริ่มทำหลัง pickup เสร็จ
+                        assignedto=assign_robot,  # ใช้หุ่นยนต์ตัวเดียวกัน
+                        group=group_robot,
+                        properties=properties
+                    )
+                else:
                     delivery_job = RobotJobQueue(
                         job_description=f"Move to destination {destination.name}",
                         destination_name=destination.name,
@@ -195,39 +270,59 @@ class AssignDestination(Resource):
                         status='waiting',  # เริ่มทำหลัง pickup เสร็จ
                         assignedto=assign_robot,  # ใช้หุ่นยนต์ตัวเดียวกัน
                         properties=properties
-                    )
-                    db.session.add(delivery_job)
-                    db.session.commit()
-                
-                    log_action(assign_robot, 'Assigned destination', f"From {previous_status} to working, Destination: {destination.name}")
+                    )    
+                db.session.add(delivery_job)
+                db.session.commit()
+            
+                log_action(assign_robot, 'Assigned destination', f"From {previous_status} to working, Destination: {destination.name}")
 
-                    return {
-                        'message': f'Robot {assign_robot} is assigned to destination: {destination.name}',
-                        'robot_id': assign_robot,
-                        'destination_job_id':delivery_job.id,
-                        'destination': destination.name
-                    }, 200        
+                return {
+                    'message': f'Robot {assign_robot} is assigned to destination: {destination.name}',
+                    'robot_id': assign_robot,
+                    'destination_job_id':delivery_job.id,
+                    'destination': destination.name
+                }, 200        
         else:
             # ถ้าไม่มีหุ่นยนต์ว่าง เพิ่มงานลงใน queue
             if pickup:
-                pickup_job = RobotJobQueue(
-                    job_description=f"Move to pickup location {pickup.name}",
-                    destination_name=pickup.name,
-                    destination_id=pickup.id,
-                    status='waiting',
-                    properties=properties
-                )
+                if(args.get('group')):
+                    pickup_job = RobotJobQueue(
+                        job_description=f"Move to pickup location {pickup.name}",
+                        destination_name=pickup.name,
+                        destination_id=pickup.id,
+                        status='waiting',
+                        group=group_robot,
+                        properties=properties
+                    )
+                else:
+                    pickup_job = RobotJobQueue(
+                        job_description=f"Move to pickup location {pickup.name}",
+                        destination_name=pickup.name,
+                        destination_id=pickup.id,
+                        status='waiting',
+                        properties=properties
+                    )    
                 db.session.add(pickup_job)
                 db.session.commit()
-
-                delivery_job = RobotJobQueue(
-                    job_description=f"Move to destination {destination.name}",
-                    destination_name=destination.name,
-                    destination_id=destination.id,
-                    status='waiting',
-                    properties=properties,
-                    parent_job_id=pickup_job.id  # เชื่อมโยงกับ Pickup Job
-                )
+                if(args.get('group')):
+                    delivery_job = RobotJobQueue(
+                        job_description=f"Move to destination {destination.name}",
+                        destination_name=destination.name,
+                        destination_id=destination.id,
+                        status='waiting',
+                        group=group_robot,
+                        properties=properties,
+                        parent_job_id=pickup_job.id  # เชื่อมโยงกับ Pickup Job
+                    )
+                else:
+                    delivery_job = RobotJobQueue(
+                        job_description=f"Move to destination {destination.name}",
+                        destination_name=destination.name,
+                        destination_id=destination.id,
+                        status='waiting',
+                        properties=properties,
+                        parent_job_id=pickup_job.id  # เชื่อมโยงกับ Pickup Job
+                )    
                 db.session.add(delivery_job)
                 db.session.commit()
 
@@ -246,13 +341,23 @@ class AssignDestination(Resource):
                 }, 202
 
             else:
-                delivery_job = RobotJobQueue(
+                if(args.get('group')):
+                    delivery_job = RobotJobQueue(
+                        job_description=f"Move to destination {destination.name}",
+                        destination_name=destination.name,
+                        destination_id=destination.id,
+                        group=group_robot,
+                        status='waiting',
+                        properties=properties
+                    )
+                else:
+                    delivery_job = RobotJobQueue(
                     job_description=f"Move to destination {destination.name}",
                     destination_name=destination.name,
                     destination_id=destination.id,
                     status='waiting',
                     properties=properties
-                )
+                )    
                 db.session.add(delivery_job)
                 db.session.commit()
 

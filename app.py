@@ -42,7 +42,7 @@ api.init_app(app)
 socketio = SocketIO(app,
                     async_mode='gevent',
                     max_http_buffer_size=10000000,
-                    cors_allowed_origins="*", 
+                    cors_allowed_origins='*', 
                     ping_timeout=5, 
                     ping_interval=5, 
                     engineio_logger=False, 
@@ -282,9 +282,19 @@ def check_and_assign_job():
                     assigned_robot = Robot.query.filter_by(pickup_id=parent_job.id, status='wait_robot').first()
 
                 else:  # ✅ เป็น Pickup Job
+                    # for heartbeat in valid_heartbeats:
+                    #     if heartbeat.robot.status == 'available':
+                    #         assigned_robot = heartbeat.robot
+                    #         break
                     for heartbeat in valid_heartbeats:
-                        if heartbeat.robot.status == 'available':
-                            assigned_robot = heartbeat.robot
+                        robot = heartbeat.robot
+
+                        # ✅ ตรวจสอบว่า group ตรงกัน ถ้ามีการกำหนด
+                        if job.group and robot.group and job.group != robot.group:
+                            continue
+
+                        if robot.status == 'available':
+                            assigned_robot = robot
                             break
 
                 if assigned_robot:
@@ -297,8 +307,8 @@ def check_and_assign_job():
                     # print("assign: ",job)
                     if job.parent_job_id is None:  # ✅ ถ้าเป็น Pickup Job → เก็บ pickup_id
                         pickup = RobotJobQueue.query.filter_by(parent_job_id=job.id).first()
-                        # print(pickup)
-                        assigned_robot.destination_id = pickup.destination_id
+                        if pickup:
+                            assigned_robot.destination_id = pickup.destination_id
 
                     db.session.commit()
 
