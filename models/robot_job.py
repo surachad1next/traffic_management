@@ -10,8 +10,12 @@ class RobotJobQueue(db.Model):
     status = db.Column(db.Enum('waiting', 'processing', 'completed', 'preempted', 'incompleted', name='job_status'), default='waiting')
     assignedto = db.Column(db.String(100), nullable=True)
     group = db.Column(db.String(100), nullable=True)
-    properties = db.Column(db.String(1024), nullable=True)
+    properties = db.Column(db.String(4096), nullable=True)
     parent_job_id = db.Column(db.Integer, db.ForeignKey('robot_job_queue.id'), nullable=True)
-
+    parent = db.relationship(
+        'RobotJobQueue',
+        remote_side='RobotJobQueue.id',
+        backref=db.backref('children', cascade='all, delete-orphan')
+    )
     def __repr__(self):
         return f"<JobQueue {self.job_description} - {self.status}>"

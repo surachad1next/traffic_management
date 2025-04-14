@@ -4,15 +4,18 @@ from models.robot_log import RobotLog
 from models.robot import Robot
 from models.robot_job import RobotJobQueue
 from models.database import db
+from dotenv import load_dotenv
 from flask import request
 import json
 import os
 import uuid
 from werkzeug.utils import secure_filename
 
-ROBOT_HOME = "HOME"
-CHARGE_POINT = "CHARGER"
-
+load_dotenv()
+# ROBOT_HOME = "HOME"
+# CHARGE_POINT = "CHARGER"
+CHARGE_POINT = os.getenv("CHARGE_POINT")
+ROBOT_HOME = os.getenv("ROBOT_HOME")
 def log_action(robot_id, action, details=None):
     # ใช้ UTC เวลาตั้งต้น แล้วแปลงใน Log
     log_entry = RobotLog(robot_id=robot_id, action=action, details=details)
@@ -44,6 +47,8 @@ class RobotStatus(Resource):
             return {
                 'robot_id': robot.robot_id,
                 'status': robot.status,
+                'battery': robot.battery,
+                'group':robot.group,
                 'coordinates': coordinates,
                 'destination': destination_data
             }, 200

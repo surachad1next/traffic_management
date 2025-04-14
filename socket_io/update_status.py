@@ -121,14 +121,14 @@ def handle_update_status(data):
             parent_job = db.session.get(RobotJobQueue, job.parent_job_id)
             if parent_job and parent_job.status != 'completed':
                 parent_job.status = 'completed'
-                parent_job.properties = None
+                # parent_job.properties = None
                 log_action(robot_id, "Parent job completed", f"Parent job {parent_job.id} is now completed.")
 
         # ✅ ถ้ามี Child Job → เปลี่ยนสถานะเป็น completed ด้วย
         child_jobs = RobotJobQueue.query.filter_by(parent_job_id=job.id, status='processing').all()
         for child in child_jobs:
             child.status = 'completed'
-            child.properties = None
+            # child.properties = None
             log_action(robot_id, "Child job completed", f"Child job {child.id} is now completed.")
 
         

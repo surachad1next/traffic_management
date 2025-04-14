@@ -1,0 +1,35 @@
+services:
+  frontend:
+    container_name: frontend
+    build:
+      context: ./destination-manager
+    ports:
+      - "8089:80"
+    depends_on:
+      - flask-app
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: nextpassword
+      MYSQL_DATABASE: robots_db
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  flask-app:
+    build: .
+    container_name: tms
+    volumes:
+      - .:/app
+      - .env:/app/.env
+    ports:
+      - "5055:5055"
+    depends_on:
+      - mysql
+    restart: always
+
+volumes:
+  db_data:

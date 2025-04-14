@@ -13,7 +13,7 @@ class Robot(db.Model):
     battery = db.Column(db.Float, nullable=True)
     pickup_id = db.Column(db.Integer)
     destination_id = db.Column(db.Integer, db.ForeignKey('destination.id'), nullable=True)
-    properties = db.Column(db.String(1024), nullable=True)
+    properties = db.Column(db.String(4096), nullable=True)
 
     destination = db.relationship('Destination', backref='robots')
 
