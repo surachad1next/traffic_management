@@ -1,13 +1,4 @@
 services:
-  frontend:
-    container_name: frontend
-    build:
-      context: ./destination-manager
-    ports:
-      - "8089:80"
-    depends_on:
-      - flask-app
-
   mysql:
     image: mysql:8.0
     container_name: mysql
@@ -30,6 +21,15 @@ services:
     depends_on:
       - mysql
     restart: always
+
+  frontend:
+    container_name: frontend
+    build:
+      context: ./destination-manager
+    ports:
+      - "8089:80"
+    depends_on:
+      - flask-app
 
 volumes:
   db_data:
