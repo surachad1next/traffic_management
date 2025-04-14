@@ -77,3 +77,22 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+.bg-custom-gray {
+  background-color: #f7fafc; /* สีเทาอ่อน */
+}
+
+ul.list-none {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.table-container {
+  width: 100%; /* ทำให้ div ครอบตารางเต็มความกว้าง */
+  overflow-x: auto; /* เลื่อนแนวนอนได้เมื่อเนื้อหากว้างเกิน */
+}
+
+.table-container table {
+  width: 100%; /* ขยายตารางให้เต็ม div */
+  table-layout: fixed; /* ให้ตารางขยายตัวเต็มพื้นที่โดยไม่ต้องรอเนื้อหามา */
+}

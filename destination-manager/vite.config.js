@@ -13,6 +13,10 @@ export default defineConfig({
       '/update': {
         target: 'http://localhost:5055',
         changeOrigin: true,
+      },
+      '/robots/available': {
+        target: 'http://localhost:5055',
+        changeOrigin: true,
       }
     }
   },

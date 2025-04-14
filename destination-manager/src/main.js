@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import App from './App.vue'
+import './style.css'
 
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { faPen, faTrash, faSave } from '@fortawesome/free-solid-svg-icons'

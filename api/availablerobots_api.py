@@ -12,9 +12,9 @@ def log_action(robot_id, action, details=None):
 class AvailableRobots(Resource):
     def get(self):
         # ดึงหุ่นยนต์ที่มีสถานะเป็น 'available'
-        available_robots = Robot.query.filter_by(status='available').all()
+        available_robots = Robot.query.all()
         robots_list = [{'robot_id': robot.robot_id} for robot in available_robots]
-        return {'available_robots': robots_list}, 200
+        return robots_list, 200
 
     def post(self):
         # การเพิ่มหุ่นยนต์ใหม่ พร้อมพิกัด x และ y

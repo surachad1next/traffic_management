@@ -1,7 +1,7 @@
 // App.vue
 <template>
   <div class="p-4">
-    <h1 class="text-2xl font-bold mb-4">Destination Manager</h1>
+    <h1 class="text-2xl font-bold mb-4">Traffice Management System</h1>
     <Notification :message="notification" v-if="notification" />
     <DestinationTable @updated="showNotification" />
   </div>
