@@ -4,5 +4,6 @@ __pycache__/*
 api/__pycache__/*
 models/__pycache__/*
 socket_io/__pycache__/*
+destination-manager/.vscode/*
 instance/*
 .vscode/*
