@@ -7,3 +7,4 @@ socket_io/__pycache__/*
 destination-manager/.vscode/*
 instance/*
 .vscode/*
+*/.vscode/*
