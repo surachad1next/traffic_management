@@ -20,6 +20,8 @@ import socketio
 import click
 import multiprocessing
 import pymysql
+import logging
+import sys
 pymysql.install_as_MySQLdb()
 
 from werkzeug.utils import secure_filename
@@ -64,14 +66,35 @@ api.init_app(app)
 # api = Api(app)
 socketio = SocketIO(app,
                     async_mode='gevent_uwsgi',
-                    # async_mode=W'gevent',
+                    # async_mode='gevent',
                     max_http_buffer_size=10000000,
                     cors_allowed_origins='*', 
                     ping_timeout=5, 
                     ping_interval=5, 
                     engineio_logger=False, 
-                    logger=False
+                    logger=True
                     )
+
+#=======================================================================
+############                    SYSTEM LOG                    ##########
+#=======================================================================
+
+logfile = "sys.log"
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+
+stdout_handler = logging.StreamHandler(sys.stdout)
+stdout_handler.setLevel(logging.DEBUG)
+stdout_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler(logfile)
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+
+
+logger.addHandler(file_handler)
+logger.addHandler(stdout_handler)
 
 #=======================================================================
 ############        CRATE FLASK APP FOR CLEAR OLD LOGS        ##########
@@ -125,11 +148,13 @@ with app.app_context():
     try:
         create_view()
     except Exception as e:
-            print("Error in Create View: %s", e)
+        print("Error in Create View: %s", e)
+        logger.error("Error in Create View: %s", e)
     try:
         db.create_all()
     except Exception as e:
-            print("Error in Create database: %s", e)
+        print("Error in Create database: %s", e)
+        logger.error("Error in Create database: %s", e)
 
 #=======================================================================
 ############            SOCKET IO EVENT FOR ROBOT             ##########
@@ -192,6 +217,7 @@ def check_battery_levels():
                 
             except Exception as e:
                 print("Error in battery loop: %s", e)
+                logger.error("Error in battery loop: %s", e)
             
             finally:
                 db.session.remove()
@@ -230,6 +256,7 @@ def check_heartbeats():
                 
             except Exception as e:
                 print("Error in heartbeat loop: %s", e)
+                logger.error("Error in heartbeat loop: %s", e)
             
             finally:
                 db.session.remove()
@@ -319,6 +346,7 @@ def check_area_robot():
                 
             except Exception as e:
                 print("Error in area robot loop: %s", e)
+                logger.error("Error in area robot loop: %s", e)
             
             finally:
                 db.session.remove()
@@ -425,6 +453,7 @@ def check_and_assign_job():
                 
             except Exception as e:
                 print("Error in job assign loop: %s", e)
+                logger.error("Error in job assign loop: %s", e)
             
             finally:
                 db.session.remove()
@@ -439,39 +468,17 @@ gevent.spawn(check_and_assign_job)
 gevent.spawn(check_heartbeats)
 gevent.spawn(check_area_robot)
 gevent.spawn(check_battery_levels)
-# socketio.start_background_task(target=check_heartbeats)
-# socketio.start_background_task(target=check_area_robot)
-# socketio.start_background_task(target=check_and_assign_job)
-
-#=======================================================================
-############          MAIN FUNCTION OF PYTHON APP             ##########
-#=======================================================================
-# def start_background_tasks():
-#     gevent.spawn(check_and_assign_job)
-#     gevent.spawn(check_heartbeats)
-#     gevent.spawn(check_area_robot)
-#     print("🟢 Background task started!")  # ✅ Debugging
-
-# start_background_tasks()
-
-# if __name__ != "__main__":
-#     start_background_tasks()  # ✅ ให้ uwsgi เรียก gevent
+ 
 def start_ws():
 	### IP WINDOWS HOST
     socketio.run(app, host='0.0.0.0', port=5055, debug=False)
     
 if __name__ == '__main__':
-    # app.run(debug=True)
-    # socketio.run(app, host='0.0.0.0', port=5055, debug=False)
-    # ใช้ gevent สำหรับ running Flask app
-    # http_server = WSGIServer(('0.0.0.0', 5055), app)
-    # http_server.serve_forever()
+ 
     p_ws = multiprocessing.Process(target=start_ws)
 
-    # 
-    # p_flask.start()
+ 
     p_ws.start()
 
-    
-    # p_flask.join()
+ 
     p_ws.join()
