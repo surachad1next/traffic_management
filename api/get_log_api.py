@@ -1,4 +1,5 @@
 from flask_restful import Resource, reqparse
+from models.robot_view_log import ViewRobotLog
 from models.robot_log import RobotLog
 from models.database import db
 from sqlalchemy import or_, and_
@@ -21,24 +22,24 @@ class GetLog(Resource):
         parser.add_argument('incomplete_only', type=bool, required=False, default=False, help="Search for incomplete logs only")
         args = parser.parse_args()
 
-        query = RobotLog.query
+        query = ViewRobotLog.query
 
         # ค้นหาตาม robot_id
         if args['robot_id']:
-            query = query.filter(RobotLog.robot_id == args['robot_id'])
+            query = query.filter(ViewRobotLog.robot_id == args['robot_id'])
 
         # ค้นหาตามช่วงเวลา
         if args['date_from']:
             try:
                 date_from = datetime.fromisoformat(args['date_from'])
-                query = query.filter(RobotLog.timestamp >= date_from)
+                query = query.filter(ViewRobotLog.timestamp >= date_from)
             except ValueError:
                 return {'error': 'Invalid date_from format. Use ISO format.'}, 400
 
         if args['date_to']:
             try:
                 date_to = datetime.fromisoformat(args['date_to'])
-                query = query.filter(RobotLog.timestamp <= date_to)
+                query = query.filter(ViewRobotLog.timestamp <= date_to)
             except ValueError:
                 return {'error': 'Invalid date_to format. Use ISO format.'}, 400
 
@@ -46,12 +47,12 @@ class GetLog(Resource):
         if args['incomplete_only']:
             query = query.filter(
                 or_(
-                    RobotLog.action.ilike('%incomplete%'),
-                    RobotLog.details.ilike('%incomplete%')
+                    ViewRobotLog.action.ilike('%incomplete%'),
+                    ViewRobotLog.details.ilike('%incomplete%')
                 )
             )
 
-        logs = query.order_by(RobotLog.timestamp.desc()).all()
+        logs = query.order_by(ViewRobotLog.timestamp.desc()).all()
 
         if logs:
             return {

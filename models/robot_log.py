@@ -17,5 +17,5 @@ class RobotLog(db.Model):
             'robot_id': self.robot_id,
             'action': self.action,
             'details': self.details,
-            'timestamp': self.timestamp.isoformat()
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None
         }

@@ -10,7 +10,7 @@ from flask import Flask ,request
 from flask_socketio import SocketIO
 from datetime import datetime, timedelta
 from sqlalchemy.pool import QueuePool
-from sqlalchemy import asc, desc, case , select
+from sqlalchemy import asc, desc, case , select , text
 from models import db,Robot,Heartbeat,RobotLog,RobotJobQueue,RobotArea,Destination
 from api import api
 from socket_io import handle_update_coordinates ,handle_call_robot ,handle_update_status ,handle_get_robot_statuses, handle_heartbeat
@@ -38,6 +38,7 @@ db_password = os.getenv("DB_PASSWORD")
 db_host = os.getenv("DB_HOST")
 db_port = os.getenv("DB_PORT")
 db_name = os.getenv("DB_NAME")
+db_oldday = os.getenv("DB_OLD")
 CHARGE_POINT = os.getenv("CHARGE_POINT")
 
 app = Flask(__name__)
@@ -63,6 +64,7 @@ api.init_app(app)
 # api = Api(app)
 socketio = SocketIO(app,
                     async_mode='gevent_uwsgi',
+                    # async_mode=W'gevent',
                     max_http_buffer_size=10000000,
                     cors_allowed_origins='*', 
                     ping_timeout=5, 
@@ -77,13 +79,13 @@ socketio = SocketIO(app,
 
 @click.command('clear_old_logs')  # ระบุชื่อคำสั่งที่ต้องการใน CLI
 def clear_old_logs():
-    cutoff_date = datetime.utcnow() - timedelta(days=15)
+    cutoff_date = datetime.utcnow() - timedelta(days=db_oldday)
     old_logs = RobotLog.query.filter(RobotLog.timestamp < cutoff_date).all()
 
     # บันทึก log ว่ามีการลบ log เก่า
     log_action('system', 'Clear old logs', f"Deleted {len(old_logs)} logs older than {cutoff_date}")
     
-    # ลบ log เก่ากว่า 15 วัน
+    # ลบ log เก่ากว่า db_oldday
     for log in old_logs:
         db.session.delete(log)
     
@@ -99,6 +101,18 @@ def log_action(robot_id, action, details=None):
     db.session.add(log_entry)
     db.session.commit()
 
+def create_view():
+    with app.app_context():
+        # ตรวจสอบและสร้าง view ถ้ายังไม่มี
+        sql = text("""
+        CREATE OR REPLACE VIEW view_robot_log AS
+        SELECT id, robot_id, action, timestamp, details
+        FROM robot_log;
+        """)
+        db.session.execute(sql)
+        db.session.commit()
+        
+
 # เพิ่มคำสั่งให้ Flask CLI
 app.cli.add_command(clear_old_logs)
 
@@ -108,8 +122,14 @@ app.cli.add_command(clear_old_logs)
 
 # สร้างฐานข้อมูล (run ครั้งแรก)
 with app.app_context():
-    db.create_all()
-
+    try:
+        create_view()
+    except Exception as e:
+            print("Error in Create View: %s", e)
+    try:
+        db.create_all()
+    except Exception as e:
+            print("Error in Create database: %s", e)
 
 #=======================================================================
 ############            SOCKET IO EVENT FOR ROBOT             ##########
