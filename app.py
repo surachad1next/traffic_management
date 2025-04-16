@@ -5,56 +5,37 @@ import gevent.monkey
 gevent.monkey.patch_all()
 
 
-from flask import Flask ,request
-# from flask_restful import Api, Resource, reqparse
+from flask import Flask ,request ,current_app
 from flask_socketio import SocketIO
-from datetime import datetime, timedelta
-from sqlalchemy.pool import QueuePool
+from datetime import datetime 
 from sqlalchemy import asc, desc, case , select , text
 from models import db,Robot,Heartbeat,RobotLog,RobotJobQueue,RobotArea,Destination
 from api import api
 from socket_io import handle_update_coordinates ,handle_call_robot ,handle_update_status ,handle_get_robot_statuses, handle_heartbeat
+from cli.command import clear_old_logs , log_action
+from logging_config import setup_logger
+from config import Config
 from dotenv import load_dotenv
 import os
 import socketio
-import click
+# import click
 import multiprocessing
 import pymysql
-import logging
-import sys
+
 pymysql.install_as_MySQLdb()
 
 from werkzeug.utils import secure_filename
 
-# from geventwebsocket import WebSocketServer
-# from gevent.pywsgi import WSGIServer
 
 import gevent
 
-# CHARGE_POINT = "CHARGER"
 
 load_dotenv()
 
-db_user = os.getenv("DB_USER")
-db_password = os.getenv("DB_PASSWORD")
-db_host = os.getenv("DB_HOST")
-db_port = os.getenv("DB_PORT")
-db_name = os.getenv("DB_NAME")
-db_oldday = os.getenv("DB_OLD")
 CHARGE_POINT = os.getenv("CHARGE_POINT")
 
 app = Flask(__name__)
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///robots.db'
-app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'poolclass': QueuePool,
-    'pool_pre_ping': True,
-    'pool_size': 10,           # จำนวน connection หลัก
-    'max_overflow': 20,        # จำนวน connection เพิ่มได้เกินจาก pool_size
-    'pool_timeout': 30,        # รอเชื่อมต่อนานแค่ไหนก่อน timeout
-    'pool_recycle': 280       # รีไซเคิล connection ทุก 30 นาที
-}
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config.from_object(Config)
 
 #=======================================================================
 ############            INIT DB and APP API                  ###########
@@ -79,50 +60,12 @@ socketio = SocketIO(app,
 ############                    SYSTEM LOG                    ##########
 #=======================================================================
 
-logfile = "sys.log"
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+logger = setup_logger()
 
-stdout_handler = logging.StreamHandler(sys.stdout)
-stdout_handler.setLevel(logging.DEBUG)
-stdout_handler.setFormatter(formatter)
-
-file_handler = logging.FileHandler(logfile)
-file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(formatter)
-
-
-logger.addHandler(file_handler)
-logger.addHandler(stdout_handler)
 
 #=======================================================================
-############        CRATE FLASK APP FOR CLEAR OLD LOGS        ##########
+############                   Create View                    ##########
 #=======================================================================
-
-@click.command('clear_old_logs')  # ระบุชื่อคำสั่งที่ต้องการใน CLI
-def clear_old_logs():
-    cutoff_date = datetime.utcnow() - timedelta(days=db_oldday)
-    old_logs = RobotLog.query.filter(RobotLog.timestamp < cutoff_date).all()
-
-    # บันทึก log ว่ามีการลบ log เก่า
-    log_action('system', 'Clear old logs', f"Deleted {len(old_logs)} logs older than {cutoff_date}")
-    
-    # ลบ log เก่ากว่า db_oldday
-    for log in old_logs:
-        db.session.delete(log)
-    
-    db.session.commit()
-
-    print(f"{len(old_logs)} logs have been deleted.")
-    return len(old_logs)
-
-# ฟังก์ชันบันทึก Log
-def log_action(robot_id, action, details=None):
-    # ใช้ UTC เวลาตั้งต้น แล้วแปลงใน Log
-    log_entry = RobotLog(robot_id=robot_id, action=action, details=details)
-    db.session.add(log_entry)
-    db.session.commit()
 
 def create_view():
     with app.app_context():
@@ -240,8 +183,7 @@ def check_heartbeats():
                     time_diff = (current_time - heartbeat.last_seen).total_seconds()
                     if time_diff > timeout_seconds and heartbeat.status == 'active':
                         heartbeat.status = 'inactive'
-                        # if heartbeat.robot:
-                        #     heartbeat.robot.status = 'inactive'  # อัปเดตสถานะหุ่นยนต์ด้วย
+                        
                         inactive_robots.append({
                             'robot_id': heartbeat.robot.robot_id, 
                             'last_seen': str(heartbeat.last_seen)
@@ -377,8 +319,7 @@ def check_and_assign_job():
                     (RobotJobQueue.parent_job_id == None, 0),
                     else_=1
                 )
-                # ✅ ดึงงานทั้งหมดที่รออยู่ และเรียงให้ pickup มาก่อน delivery
-                # waiting_jobs = RobotJobQueue.query.filter_by(status='waiting').order_by(RobotJobQueue.parent_job_id.nulls_first()).all()
+                
                 waiting_jobs = (
                     RobotJobQueue.query
                     .filter_by(status='waiting')
@@ -396,12 +337,7 @@ def check_and_assign_job():
 
                         assigned_robot = Robot.query.filter_by(pickup_id=parent_job.id, status='wait_robot').first()
 
-                    else:  # ✅ เป็น Pickup Job
-                        # for heartbeat in valid_heartbeats:
-                        #     if heartbeat.robot.status == 'available':
-                        #         assigned_robot = heartbeat.robot
-                        #         break
-                        # print(valid_heartbeats)
+                    else:
                         print(f"🟢 Checking and assgin Job: {len(valid_heartbeats)} robots")  # ✅ Debugging
                         for heartbeat in valid_heartbeats:
                             robot = heartbeat.robot
