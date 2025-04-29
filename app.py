@@ -135,7 +135,7 @@ def check_battery_levels():
                 for robot in robots:
                     try:
                         if robot.battery != None:
-                            if robot.battery < 30 and robot.status == "available" :
+                            if robot.battery <= 30 and robot.status == "available" :
                                 robot.status = 'NeedCharge'
                                 combined_name = f"{CHARGE_POINT}_{robot.robot_id}"
                                 # ค้นหาตำแหน่ง charger ที่อยู่ใน Destination
