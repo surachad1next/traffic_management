@@ -46,14 +46,14 @@ db.init_app(app)
 api.init_app(app)
 # api = Api(app)
 socketio = SocketIO(app,
-                    async_mode='gevent_uwsgi',
-                    # async_mode='gevent',
+                    # async_mode='gevent_uwsgi',
+                    async_mode='gevent',
                     max_http_buffer_size=10000000,
                     cors_allowed_origins='*', 
                     ping_timeout=5, 
                     ping_interval=5, 
                     engineio_logger=False, 
-                    logger=True
+                    logger=False
                     )
 
 #=======================================================================
@@ -127,7 +127,7 @@ def check_battery_levels():
         with app.app_context():
             try:
             
-                """ ตรวจสอบระดับแบตเตอรี่ของหุ่นยนต์และสั่งให้วิ่งไปยังแท่นชาร์จหากต่ำกว่า 20% """
+                """ ตรวจสอบระดับแบตเตอรี่ของหุ่นยนต์และสั่งให้วิ่งไปยังแท่นชาร์จหากต่ำกว่า 30% """
                 robots_need_charge = []
 
                 robots = Robot.query.all()
@@ -135,7 +135,7 @@ def check_battery_levels():
                 for robot in robots:
                     try:
                         if robot.battery != None:
-                            if robot.battery < 20 and robot.status == "available" :
+                            if robot.battery < 30 and robot.status == "available" :
                                 robot.status = 'NeedCharge'
                                 combined_name = f"{CHARGE_POINT}_{robot.robot_id}"
                                 # ค้นหาตำแหน่ง charger ที่อยู่ใน Destination
