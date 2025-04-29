@@ -43,9 +43,12 @@ class AssignDestination(Resource):
         except Exception as e:
             return {'message': f'Error querying destination: {str(e)}'}, 500
 
-        import ast
-        properties_dict = ast.literal_eval(args['properties'])
-        properties = json.dumps(properties_dict)
+        try:
+            import ast
+            properties_dict = ast.literal_eval(args['properties'])
+            properties = json.dumps(properties_dict)
+        except:
+            properties = ""
         # print(properties)
         if not destination:
             return {'message': 'Destination not found'}, 400
@@ -142,7 +145,7 @@ class AssignDestination(Resource):
                     db.session.add(delivery_job)
                     db.session.commit()
 
-                    log_action(closest_robot.robot_id, 'Assigned destination', f"From {previous_status} to working, Destination: {destination.name}")
+                    log_action(closest_robot.robot_id, 'Assigned destination', f"To working, Destination: {destination.name}")
 
                     return {
                         'message': f'Robot {closest_robot.robot_id} is assigned to destination: {destination.name}',
@@ -181,7 +184,7 @@ class AssignDestination(Resource):
                     db.session.add(delivery_job)
                     db.session.commit()
                 
-                    log_action(closest_robot.robot_id, 'Assigned destination', f"From {previous_status} to working, Destination: {destination.name}")
+                    log_action(closest_robot.robot_id, 'Assigned destination', f"To working, Destination: {destination.name}")
 
                     return {
                         'message': f'Robot {closest_robot.robot_id} is assigned to destination: {destination.name}',
@@ -216,6 +219,7 @@ class AssignDestination(Resource):
 
                 db.session.add(pickup_job)
                 db.session.commit()
+                
                 if(args.get('group')):
                     delivery_job = RobotJobQueue(
                         job_description=f"Move to destination {destination.name}",
@@ -274,7 +278,7 @@ class AssignDestination(Resource):
                 db.session.add(delivery_job)
                 db.session.commit()
             
-                log_action(assign_robot, 'Assigned destination', f"From {previous_status} to working, Destination: {destination.name}")
+                log_action(assign_robot, 'Assigned destination', f"To working, Destination: {destination.name}")
 
                 return {
                     'message': f'Robot {assign_robot} is assigned to destination: {destination.name}',
