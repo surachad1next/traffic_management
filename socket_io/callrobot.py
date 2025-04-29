@@ -19,7 +19,23 @@ def handle_call_robot(data):
     for robot in robots:
         destination = Destination.query.filter_by(id=robot.destination_id).first()
         pickup = Destination.query.filter_by(id=robot.pickup_id).first()
-        if pickup:
+        # print(destination)
+        # print(pickup)
+        if pickup and (destination == None):
+            listrobot = {
+                'robot_id': robot.robot_id,
+                'destination_id': pickup.id,
+                'destination_name': pickup.name,
+                'properties': robot.properties
+            }
+        elif destination and (pickup == None):
+            listrobot = {
+                'robot_id': robot.robot_id,
+                'destination_id': destination.id,
+                'destination_name': destination.name,
+                'properties': robot.properties
+            }
+        else:
             listrobot = {
                 'robot_id': robot.robot_id,
                 'destination_id': destination.id,
@@ -28,15 +44,8 @@ def handle_call_robot(data):
                 'pickup_id': pickup.id,
                 'properties': robot.properties
             }
-        if destination and not pickup:
-            listrobot = {
-                'robot_id': robot.robot_id,
-                'destination_id': destination.id,
-                'destination_name': destination.name,
-                'properties': robot.properties
-            }
         
-    
+        
     # ส่งข้อมูลหุ่นยนต์ที่มีสถานะ 'wait_robot' กลับไป
     # print(listrobot)
     emit('call_roboted', {'robots': listrobot,'code':202})
