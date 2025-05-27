@@ -1,5 +1,6 @@
 from flask_restful import Api
 from .jobqueuestatus import JobQueueStatus
+from .jobqueueprocess import JobQueueProcess
 from .robotstatus_api import RobotStatus
 from .adddestination_api import AddDestination
 from .robotcorrdinates_api import RobotCoordinates
@@ -20,6 +21,7 @@ api.add_resource(AssignDestination, '/assign/destination')
 api.add_resource(UpdateDestination,'/update/destination/<int:destination_id>')
 api.add_resource(AddDestination, '/destination')
 api.add_resource(JobQueueStatus, '/job/queue/status') 
+api.add_resource(JobQueueProcess, '/job/queue/process') 
 api.add_resource(JobToQueue, '/job/queue') 
 api.add_resource(PostTask,'/sony/job')
 api.add_resource(GetLog,'/getlog')

@@ -145,6 +145,68 @@ def handle_update_status(data):
             'message': f'Robot {robot_id} has completed {job.destination_name} at the task {job.id}, currently robot is now available',
             'code': 202
         })
+        
+    elif robot.status == 'charging' and status == 'done':
+        job = RobotJobQueue.query.filter_by(assignedto=robot_id,status='processing').first()
+
+        if not job:
+            emit('error', {'message': f'No processing job found for robot {robot_id}'})
+            return
+
+        robot.status = 'charging'  # เปลี่ยนสถานะจาก working เป็น available
+        robot.pickup_id = None
+        robot.destination = None
+        robot.properties = None
+        job.status = 'completed'
+        # job.properties = None
+        log_action(robot_id,f"From charging to {robot.status}", f'Robot has completed {job.destination_name} at the task {job.id}, currently robot is now available.')
+        try:
+            properties = json.loads(job.properties)
+            assign_data = {
+                "message": "Success Transfer",
+                "info": {
+                        "lot_no": properties["ui"]["lot_no"],
+                        "status": "C",
+                        "from_stocker": properties["ui"]["from_stocker"],
+                        "from_level": properties["ui"]["from_level"],
+                        "from_block": properties["ui"]["from_block"],
+                        "to_stocker": properties["ui"]["to_stocker"],
+                        "to_level": properties["ui"]["to_level"],
+                        "to_block": properties["ui"]["to_block"],
+                        "assigned_to": job.assignedto,
+                        "job_no": job.id
+                    }
+                }
+
+            assign_destination_url = POST_STATE  # เปลี่ยนเป็น URL จริง
+            if(POST_STATE_ON):
+                response = requests.post(assign_destination_url, json=assign_data)
+        except Exception as e:
+            pass    
+
+        # ✅ ถ้ามี Parent Job → เปลี่ยนสถานะเป็น completed ด้วย
+        if job.parent_job_id:
+            parent_job = db.session.get(RobotJobQueue, job.parent_job_id)
+            if parent_job and parent_job.status != 'completed':
+                parent_job.status = 'completed'
+                # parent_job.properties = None
+                log_action(robot_id, "Parent job completed", f"Parent job {parent_job.id} is now completed.")
+
+        # ✅ ถ้ามี Child Job → เปลี่ยนสถานะเป็น completed ด้วย
+        child_jobs = RobotJobQueue.query.filter_by(parent_job_id=job.id, status='processing').all()
+        for child in child_jobs:
+            child.status = 'completed'
+            # child.properties = None
+            log_action(robot_id, "Child job completed", f"Child job {child.id} is now completed.")
+
+        
+        db.session.commit()
+
+        emit('status_updated', {
+            'message': f'Robot {robot_id} has completed {job.destination_name} at the task {job.id}, currently robot is now available',
+            'code': 202
+        })
+        
     elif(robot.status == 'NeedCharge') and status == 'acknowledged':
         robot.status = 'gotocharger'  # เปลี่ยนสถานะจาก NeedCharge เป็น gotocharger
         log_action(robot_id,f"From NeedCharge to {robot.status}", 'Robot acknowledged and started goto charger.')

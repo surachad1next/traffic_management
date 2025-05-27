@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     htop \
     nano \
+    libpcre3 \
+    libpcre3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # ตั้ง working directory

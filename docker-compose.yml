@@ -8,7 +8,8 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     ports:
-      - "3306:3306"
+      - "33306:3306"
+    restart: always
 
   flask-app:
     build: .
@@ -30,6 +31,7 @@ services:
       - "8089:80"
     depends_on:
       - flask-app
+    restart: always
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin

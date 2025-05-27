@@ -3,3 +3,4 @@ from .callrobot import handle_call_robot
 from .update_status import handle_update_status
 from .get_robot_statuses import handle_get_robot_statuses
 from .heartbeatevent import handle_heartbeat
+from .handlerobotdata import handle_getdata_robot

@@ -11,7 +11,7 @@ from datetime import datetime
 from sqlalchemy import asc, desc, case , select , text
 from models import db,Robot,Heartbeat,RobotLog,RobotJobQueue,RobotArea,Destination
 from api import api
-from socket_io import handle_update_coordinates ,handle_call_robot ,handle_update_status ,handle_get_robot_statuses, handle_heartbeat
+from socket_io import handle_update_coordinates ,handle_call_robot ,handle_update_status ,handle_get_robot_statuses, handle_heartbeat , handle_getdata_robot
 from cli.command import clear_old_logs , log_action
 from logging_config import setup_logger
 from config import Config
@@ -46,8 +46,8 @@ db.init_app(app)
 api.init_app(app)
 # api = Api(app)
 socketio = SocketIO(app,
-                    # async_mode='gevent_uwsgi',
-                    async_mode='gevent',
+                    async_mode='gevent_uwsgi',
+                    # async_mode='gevent',
                     max_http_buffer_size=10000000,
                     cors_allowed_origins='*', 
                     ping_timeout=5, 
@@ -108,6 +108,7 @@ socketio.on_event('call_robot', handle_call_robot)
 socketio.on_event('update_status', handle_update_status)
 socketio.on_event('get_robot_statuses', handle_get_robot_statuses)
 socketio.on_event('heartbeat', handle_heartbeat)
+socketio.on_event('robotdata', handle_getdata_robot)
 
 
 @socketio.on('connect')
