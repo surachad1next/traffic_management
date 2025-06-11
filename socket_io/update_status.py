@@ -82,7 +82,7 @@ def handle_update_status(data):
 
         emit('status_updated', {
             'message': f'Robot {robot_id} has pickup completed , currently robot is now delivery',
-            'code': 202
+            'code': 200
         })
 
     elif robot.status == 'working' and status == 'done':
@@ -97,6 +97,7 @@ def handle_update_status(data):
         robot.destination = None
         robot.properties = None
         job.status = 'completed'
+        job.destination_id = None
         # job.properties = None
         log_action(robot_id,f"From working to {robot.status}", f'Robot has completed {job.destination_name} at the task {job.id}, currently robot is now available.')
         try:
@@ -128,14 +129,16 @@ def handle_update_status(data):
             parent_job = db.session.get(RobotJobQueue, job.parent_job_id)
             if parent_job and parent_job.status != 'completed':
                 parent_job.status = 'completed'
-                # parent_job.properties = None
+                parent_job.destination_id = None
+                parent_job.parent_job_id = None
                 log_action(robot_id, "Parent job completed", f"Parent job {parent_job.id} is now completed.")
 
         # ✅ ถ้ามี Child Job → เปลี่ยนสถานะเป็น completed ด้วย
         child_jobs = RobotJobQueue.query.filter_by(parent_job_id=job.id, status='processing').all()
         for child in child_jobs:
             child.status = 'completed'
-            # child.properties = None
+            child.destination_id = None
+            child.parent_job_id = None
             log_action(robot_id, "Child job completed", f"Child job {child.id} is now completed.")
 
         
@@ -158,6 +161,7 @@ def handle_update_status(data):
         robot.destination = None
         robot.properties = None
         job.status = 'completed'
+        job.destination_id = None
         # job.properties = None
         log_action(robot_id,f"From charging to {robot.status}", f'Robot has completed {job.destination_name} at the task {job.id}, currently robot is now available.')
         try:
@@ -189,14 +193,16 @@ def handle_update_status(data):
             parent_job = db.session.get(RobotJobQueue, job.parent_job_id)
             if parent_job and parent_job.status != 'completed':
                 parent_job.status = 'completed'
-                # parent_job.properties = None
+                parent_job.destination_id = None
+                parent_job.parent_job_id = None
                 log_action(robot_id, "Parent job completed", f"Parent job {parent_job.id} is now completed.")
 
         # ✅ ถ้ามี Child Job → เปลี่ยนสถานะเป็น completed ด้วย
         child_jobs = RobotJobQueue.query.filter_by(parent_job_id=job.id, status='processing').all()
         for child in child_jobs:
             child.status = 'completed'
-            # child.properties = None
+            child.destination_id = None
+            child.parent_job_id = None
             log_action(robot_id, "Child job completed", f"Child job {child.id} is now completed.")
 
         
@@ -358,7 +364,18 @@ def handle_update_status(data):
             'message': f'Robot {robot_id} has charging, currently robot is charging.',
             'code': 210
         })
-    elif status == 'notcharge':
+    elif status == 'manualcharging':
+        robot.previous_status = previous_status
+        robot.status = 'manualcharging'  
+
+        log_action(robot_id,f"go to {robot.status}", f'Robot has manualcharging, currently robot is manualcharging.')
+        db.session.commit()
+
+        emit('status_updated', {
+            'message': f'Robot {robot_id} has manualcharging, currently robot is manualcharging.',
+            'code': 210
+        })
+    elif robot.status == 'available' and status == 'notcharge' :
         robot.status = 'available'
         robot.previous_status = None 
 
@@ -369,8 +386,32 @@ def handle_update_status(data):
             'message': f'Robot {robot_id} has notcharge, currently robot is available.',
             'code': 204
         })
+        
+    elif robot.status == 'working' and status == 'notcharge' :
+        robot.status = 'working'
+        robot.previous_status = None 
+
+        log_action(robot_id,f"go to {robot.status}", f'Robot has notcharge, currently robot is working.')
+        db.session.commit()
+
+        emit('status_updated', {
+            'message': f'Robot {robot_id} has notcharge, currently robot is working.',
+            'code': 204
+        })
+        
+    elif robot.status == 'manualcharging' and status == 'notcharge' :
+        robot.status = 'available'
+        robot.previous_status = None 
+
+        log_action(robot_id,f"go to {robot.status}", f'Robot has notcharge, currently robot is available.')
+        db.session.commit()
+
+        emit('status_updated', {
+            'message': f'Robot {robot_id} has notcharge, currently robot is available.',
+            'code': 204
+        })    
     else:
-        emit('error', {'message': f'Unexpected status update for robot {robot_id}',
+        emit('error', {'message': f'Unexpected status update for robot {robot_id} ,{robot.status} recived ,{status}',
             'code': 500
             })
 
@@ -393,6 +434,7 @@ def canclealljob(robot_id,state='other'):
         return
 
     job.status = 'incompleted'
+    job.destination_id = None
     # job.properties = None
 
     if(state == "working"):
@@ -428,14 +470,16 @@ def canclealljob(robot_id,state='other'):
         parent_job = db.session.get(RobotJobQueue, job.parent_job_id)
         if parent_job and parent_job.status != 'completed':
             parent_job.status = 'incompleted'
-            parent_job.properties = None
+            parent_job.destination_id = None
+            parent_job.parent_job_id = None
             log_action(robot_id, "Parent job incompleted", f"Parent job {parent_job.id} is now incompleted.")
 
     # ✅ ถ้ามี Child Job → เปลี่ยนสถานะเป็น completed ด้วย
     child_jobs = RobotJobQueue.query.filter_by(parent_job_id=job.id, status='processing').all()
     for child in child_jobs:
         child.status = 'incompleted'
-        child.properties = None
+        child.destination_id = None
+        child.parent_job_id = None
         log_action(robot_id, "Child job incompleted", f"Child job {child.id} is now incompleted.")
 
     log_action(robot_id,f"From working to {robot.status}", f'Robot has incompleted {job.destination_name} at the task {job.id}, currently robot is now available.')

@@ -8,7 +8,7 @@ gevent.monkey.patch_all()
 from flask import Flask ,request ,current_app
 from flask_socketio import SocketIO
 from datetime import datetime 
-from sqlalchemy import asc, desc, case , select , text
+from sqlalchemy import asc, desc, case , select , text , or_
 from models import db,Robot,Heartbeat,RobotLog,RobotJobQueue,RobotArea,Destination
 from api import api
 from socket_io import handle_update_coordinates ,handle_call_robot ,handle_update_status ,handle_get_robot_statuses, handle_heartbeat , handle_getdata_robot
@@ -123,6 +123,9 @@ def handle_connect():
 ############          GEVENT FOR ROUTING FUNCTION             ##########
 #=======================================================================
 
+is_checking_area = False
+is_checking_assign = False
+
 def check_battery_levels():
     while True:
         with app.app_context():
@@ -166,7 +169,7 @@ def check_battery_levels():
             finally:
                 db.session.remove()
 
-        gevent.sleep(5)
+        gevent.sleep(60)
 
 def check_heartbeats():
     while True:
@@ -179,7 +182,9 @@ def check_heartbeats():
 
                 # ตรวจสอบหุ่นยนต์ที่ heartbeat เกินเวลา
                 heartbeats = Heartbeat.query.all()
-                print(f"🟢 Checking heartbeats: {len(heartbeats)} robots")  # ✅ Debugging
+                # print(f"🟢 Checking heartbeats: {len(heartbeats)} robots")  # ✅ Debugging
+                logger.info(f"Checking heartbeats: {len(heartbeats)} robots")
+                # log_action("System", 'Checking heartbeats', f"Checking heartbeats: {len(heartbeats)} robots")
                 for heartbeat in heartbeats:
                     time_diff = (current_time - heartbeat.last_seen).total_seconds()
                     if time_diff > timeout_seconds and heartbeat.status == 'active':
@@ -204,14 +209,20 @@ def check_heartbeats():
             finally:
                 db.session.remove()
         
-        gevent.sleep(5)  # ตรวจสอบทุก ๆ 5 วินาที      # พักการทำงานเพื่อหลีกเลี่ยงการใช้ CPU สูง
+        gevent.sleep(10)  # ตรวจสอบทุก ๆ 5 วินาที      # พักการทำงานเพื่อหลีกเลี่ยงการใช้ CPU สูง
           
 def check_area_robot():
     """ ตรวจสอบว่ามีหุ่นยนต์อยู่ในพื้นที่เดียวกันหรือไม่ แล้วส่ง pause/play ตามลำดับ """
+    global is_checking_area
+    if is_checking_area:
+        print("⚠️ check_area_robot already running. Skip.")
+        return
+    is_checking_area = True
+    
     while True:
         with app.app_context():
             try:
-
+                
                 area_robots = (
                     RobotArea.query
                     .join(Robot)
@@ -219,7 +230,15 @@ def check_area_robot():
                     .filter(Heartbeat.status != 'inactive')
                     .all()
                 )
-
+                
+                
+                if not area_robots:
+                    # print("🔴 No active robots in any area")
+                    logger.info("No active robots in any area")
+                    # log_action("System", 'Area check', 'No active robots in any area')
+                    gevent.sleep(2)
+                    continue
+            
                 # เก็บข้อมูลพื้นที่และหุ่นยนต์
                 listrobot_area = {}
                 robot_areas = {}
@@ -284,6 +303,8 @@ def check_area_robot():
                         for area in listrobot_area.values()
                         for r in area
                     ]
+                    logger.info("Robot(s) in any area")
+                    # log_action("System", 'Area check', 'robot(s) in any area')
                     socketio.emit("robot_control", robot_control_data)
 
                 
@@ -292,6 +313,7 @@ def check_area_robot():
                 logger.error("Error in area robot loop: %s", e)
             
             finally:
+                is_checking_area = False
                 db.session.remove()
 
         gevent.sleep(2)  # พักการทำงานเพื่อหลีกเลี่ยงการใช้ CPU สูง
@@ -304,7 +326,10 @@ def check_and_assign_job():
                     select(Heartbeat.robot_id)
                     .join(Robot)
                     .filter(
-                        Robot.status == 'available',
+                        or_(
+                            Robot.status == 'available',
+                            Robot.status == 'charging'
+                        ),
                         Heartbeat.status == 'active'
                     )
                     .scalar_subquery()
@@ -327,6 +352,25 @@ def check_and_assign_job():
                     .order_by(order_expr, RobotJobQueue.parent_job_id)
                     .all()
                 )
+                
+                logger.info(f"JOB: {len(waiting_jobs)}, ROBOT : {len(valid_heartbeats)}")
+
+                
+                # ถ้าไม่มีงาน หรือไม่มี robot ที่ valid → ไม่ต้องทำอะไร
+                if not waiting_jobs or not valid_heartbeats:
+                    if not waiting_jobs:
+                        # print("🔴 No waiting jobs found")
+                        logger.info("No waiting jobs found")
+                        # log_action("System", 'Job check', 'No waiting jobs in queue')
+
+                    if not valid_heartbeats:
+                        # print("🔴 No valid heartbeats (no available & active robots)")
+                        logger.info("No valid heartbeats (no available & active robots)")
+                        # log_action("System", 'Job check', 'No available robots with active heartbeat')
+
+                    gevent.sleep(5)
+                    continue
+                
                 for job in waiting_jobs:
                     assigned_robot = None
 
@@ -339,18 +383,19 @@ def check_and_assign_job():
                         assigned_robot = Robot.query.filter_by(pickup_id=parent_job.id, status='wait_robot').first()
 
                     else:
-                        print(f"🟢 Checking and assgin Job: {len(valid_heartbeats)} robots")  # ✅ Debugging
+                        logger.info(f"Checking and assign Job: {(valid_heartbeats)} robots") 
                         for heartbeat in valid_heartbeats:
                             robot = heartbeat.robot
 
-                            if robot.status != 'available':
+                            if (robot.status != 'available') and (robot.status != 'charging'):
                                 continue
 
                             if job.group:
                                 if not robot.group or robot.group != job.group:
                                     continue  # ข้ามหุ่นที่ไม่มี group หรือ group ไม่ตรง
-
+                            
                             assigned_robot = robot
+                            logger.info(f"JOB assigned : {(waiting_jobs)}, ROBOT : {(assigned_robot)}")
                             break
 
                     if assigned_robot:
@@ -395,7 +440,7 @@ def check_and_assign_job():
             finally:
                 db.session.remove()
         
-        gevent.sleep(1)
+        gevent.sleep(5)
         
 
 
