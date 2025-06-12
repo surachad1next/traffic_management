@@ -1,6 +1,6 @@
 from .update_coor_event import handle_update_coordinates
 from .callrobot import handle_call_robot
-from .update_status import handle_update_status
+from .update_status import handle_update_status , canclealljob
 from .get_robot_statuses import handle_get_robot_statuses
 from .heartbeatevent import handle_heartbeat
 from .handlerobotdata import handle_getdata_robot
