@@ -7,7 +7,7 @@ gevent.monkey.patch_all()
 
 from flask import Flask ,request ,current_app
 from flask_socketio import SocketIO
-from datetime import datetime
+from datetime import datetime 
 from sqlalchemy import asc, desc, case , select , text , or_
 from models import db,Robot,Heartbeat,RobotLog,RobotJobQueue,RobotArea,Destination
 from api import api
@@ -178,6 +178,7 @@ def check_heartbeats():
             try:
                 
                 timeout_seconds = 20  # ระยะเวลา timeout (วินาที)
+                auto_available_timeout = 600
                 current_time = datetime.utcnow()
                 inactive_robots = []
 
@@ -189,7 +190,6 @@ def check_heartbeats():
                 
                 for heartbeat in heartbeats:
                     time_diff = (current_time - heartbeat.last_seen).total_seconds()
-                    
                     if time_diff > timeout_seconds:
                         if heartbeat.status == 'active':
                             # เปลี่ยนสถานะเป็น inactive และบันทึกเวลา
@@ -199,12 +199,13 @@ def check_heartbeats():
                                 'last_seen': str(heartbeat.last_seen)
                             })
                             
-                    elif heartbeat.status == 'inactive' and time_diff > auto_available_timeout:
-                        robot = heartbeat.robot
-                        if robot and robot.status != 'available':
-                            logger.info(f"Robot {robot.robot_id} inactive > {auto_available_timeout/60} mins, marking available & canceling job.")
-                            log_action(f"{robot.robot_id}", 'Checking heartbeats', f"Robot {robot.robot_id} inactive > {auto_available_timeout/60} mins, marking available & canceling job.")
-                            canclealljob(robot.robot_id, state=robot.status)
+                        elif heartbeat.status == 'inactive' and time_diff > auto_available_timeout:
+                            logger.info(f"Checking heartbeats Case inactive robots : {heartbeat.robot.robot_id} time_diff : {time_diff}")
+                            robot = heartbeat.robot
+                            if robot and robot.status != 'available':
+                                logger.info(f"Robot {robot.robot_id} inactive > {auto_available_timeout/60} mins, marking available & canceling job.")
+                                log_action(f"{robot.robot_id}", 'Checking heartbeats', f"Robot {robot.robot_id} inactive > {auto_available_timeout/60} mins, marking available & canceling job.")
+                                canclealljob(robot.robot_id, state=robot.status)
                                             
 
                 # บันทึกการเปลี่ยนแปลงหากมี
