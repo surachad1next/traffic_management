@@ -39,4 +39,5 @@ RUN chmod +x wait-for-it.sh
 # CMD ["python3", "connect_app.py"]
 # CMD ["bash", "-c", "python3 connect_app.py & ./.traffic"]
 # CMD ["sh","./start.sh"]
-CMD ["sh", "-c", "./wait-for-it.sh mysql:3306 -- ./start.sh"]
+# CMD ["sh", "-c", "./wait-for-it.sh mysql:3306 -- ./start.sh"]
+CMD ["sh", "-c", "./wait-for-it.sh postgres:5432 -- ./start.sh"]

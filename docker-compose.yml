@@ -1,14 +1,31 @@
+version: '3.8'
+
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: mysql
+  postgres:
+    image: postgres:15
+    container_name: postgres
     environment:
-      MYSQL_ROOT_PASSWORD: nextpassword
-      MYSQL_DATABASE: robots_db
+      POSTGRES_USER: nextuser
+      POSTGRES_PASSWORD: nextpassword
+      POSTGRES_DB: robots_db
     volumes:
-      - db_data:/var/lib/mysql
+      - pg_data:/var/lib/postgresql/data
     ports:
-      - "33306:3306"
+      - "5432:5432"
+    restart: always
+    
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8082:80"
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
     restart: always
 
   flask-app:
@@ -20,7 +37,7 @@ services:
     ports:
       - "5055:5055"
     depends_on:
-      - mysql
+      - postgres
     restart: always
 
   frontend:
@@ -33,17 +50,56 @@ services:
       - flask-app
     restart: always
 
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: phpmyadmin
-    restart: always
-    ports:
-      - "8081:80"
-    environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-    depends_on:
-      - mysql
-
 volumes:
-  db_data:
+  pg_data:
+  pgadmin_data:
+  
+# services:
+#   mysql:
+#     image: mysql:8.0
+#     container_name: mysql
+#     environment:
+#       MYSQL_ROOT_PASSWORD: nextpassword
+#       MYSQL_DATABASE: robots_db
+#     volumes:
+#       - db_data:/var/lib/mysql
+#     ports:
+#       - "33306:3306"
+#     restart: always
+
+#   flask-app:
+#     build: .
+#     container_name: tms
+#     volumes:
+#       - .:/app
+#       - .env:/app/.env
+#     ports:
+#       - "5055:5055"
+#     depends_on:
+#       - mysql
+#     restart: always
+
+#   frontend:
+#     container_name: frontend
+#     build:
+#       context: ./destination-manager
+#     ports:
+#       - "8089:80"
+#     depends_on:
+#       - flask-app
+#     restart: always
+
+#   phpmyadmin:
+#     image: phpmyadmin/phpmyadmin
+#     container_name: phpmyadmin
+#     restart: always
+#     ports:
+#       - "8081:80"
+#     environment:
+#       PMA_HOST: mysql
+#       PMA_PORT: 3306
+#     depends_on:
+#       - mysql
+
+# volumes:
+#   db_data:
