@@ -410,6 +410,18 @@ def handle_update_status(data):
             'message': f'Robot {robot_id} has notcharge, currently robot is available.',
             'code': 204
         })    
+    elif robot.status == 'charging' and status == 'busy':
+        robot.status = 'busy'  
+        robot.destination = None
+        robot.properties = None
+
+        log_action(robot_id,f"From avaliable to {robot.status}", f'Robot has own job, currently robot is now busy.')
+        db.session.commit()
+
+        emit('status_updated', {
+            'message': f'Robot {robot_id} has own job, currently robot is now busy.',
+            'code': 203
+        })
     else:
         emit('error', {'message': f'Unexpected status update for robot {robot_id} ,{robot.status} recived ,{status}',
             'code': 500
