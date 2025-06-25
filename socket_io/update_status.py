@@ -11,6 +11,8 @@ load_dotenv()
 
 POST_STATE = os.getenv("POST_STATE")
 POST_STATE_ON = bool(os.getenv("POST_STATE_ON",False))
+header_key = os.getenv('API_HEADER_KEY')
+header_value = os.getenv('API_HEADER_VALUE')
 
 def log_action(robot_id, action, details=None):
     # ใช้ UTC เวลาตั้งต้น แล้วแปลงใน Log
@@ -60,7 +62,7 @@ def handle_update_status(data):
             properties = json.loads(job.properties)
             assign_data = {
                 "message": "Success Transfer",
-                "info": {
+                "data": {
                         "lot_no": properties["ui"]["lot_no"],
                         "status": "R",
                         "from_stocker": properties["ui"]["from_stocker"],
@@ -75,8 +77,11 @@ def handle_update_status(data):
                 }
 
             assign_destination_url = POST_STATE  # เปลี่ยนเป็น URL จริง
+            headers = {
+                header_key: header_value
+            }
             if(POST_STATE_ON):
-                response = requests.post(assign_destination_url, json=assign_data)
+                response = requests.post(assign_destination_url, json=assign_data, headers=headers)
         except Exception as e:
             pass
 
@@ -104,7 +109,7 @@ def handle_update_status(data):
             properties = json.loads(job.properties)
             assign_data = {
                 "message": "Success Transfer",
-                "info": {
+                "data": {
                         "lot_no": properties["ui"]["lot_no"],
                         "status": "C",
                         "from_stocker": properties["ui"]["from_stocker"],
@@ -119,8 +124,11 @@ def handle_update_status(data):
                 }
 
             assign_destination_url = POST_STATE  # เปลี่ยนเป็น URL จริง
+            headers = {
+                header_key: header_value
+            }
             if(POST_STATE_ON):
-                response = requests.post(assign_destination_url, json=assign_data)
+                response = requests.post(assign_destination_url, json=assign_data, headers=headers)
         except Exception as e:
             pass    
 
@@ -168,7 +176,7 @@ def handle_update_status(data):
             properties = json.loads(job.properties)
             assign_data = {
                 "message": "Success Transfer",
-                "info": {
+                "data": {
                         "lot_no": properties["ui"]["lot_no"],
                         "status": "C",
                         "from_stocker": properties["ui"]["from_stocker"],
@@ -183,8 +191,11 @@ def handle_update_status(data):
                 }
 
             assign_destination_url = POST_STATE  # เปลี่ยนเป็น URL จริง
+            headers = {
+                header_key: header_value
+            }
             if(POST_STATE_ON):
-                response = requests.post(assign_destination_url, json=assign_data)
+                response = requests.post(assign_destination_url, json=assign_data, headers=headers)
         except Exception as e:
             pass    
 
@@ -364,6 +375,7 @@ def handle_update_status(data):
             'message': f'Robot {robot_id} has charging, currently robot is charging.',
             'code': 210
         })
+    
     elif status == 'manualcharging':
         robot.previous_status = previous_status
         robot.status = 'manualcharging'  
@@ -409,7 +421,7 @@ def handle_update_status(data):
         emit('status_updated', {
             'message': f'Robot {robot_id} has notcharge, currently robot is available.',
             'code': 204
-        })    
+        })
     elif robot.status == 'charging' and status == 'busy':
         robot.status = 'busy'  
         robot.destination = None
@@ -454,7 +466,7 @@ def canclealljob(robot_id,state='other'):
             properties = json.loads(job.properties)
             assign_data = {
                 "message": "Cancel Transfer",
-                "info": {
+                "data": {
                         "lot_no": properties["ui"]["lot_no"],
                         "status": "E",
                         "from_stocker": properties["ui"]["from_stocker"],
@@ -469,8 +481,11 @@ def canclealljob(robot_id,state='other'):
                 }
 
             assign_destination_url = POST_STATE  # เปลี่ยนเป็น URL จริง
+            headers = {
+                header_key: header_value
+            }
             if(POST_STATE_ON):
-                response = requests.post(assign_destination_url, json=assign_data)
+                response = requests.post(assign_destination_url, json=assign_data, headers=headers)
                 
         except Exception as e:
             pass

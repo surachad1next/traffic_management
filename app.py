@@ -34,6 +34,7 @@ load_dotenv()
 
 CHARGE_POINT = os.getenv("CHARGE_POINT")
 auto_available_timeout = os.getenv("Available_Time")
+SERVICE_PORT = int(os.getenv("SERVICE_PORT", 5055))
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -47,8 +48,9 @@ db.init_app(app)
 api.init_app(app)
 # api = Api(app)
 socketio = SocketIO(app,
-                    async_mode='gevent_uwsgi',
-                    # async_mode='gevent',
+                    # async_mode='gevent_uwsgi',
+                    async_mode='gevent',
+                    # message_queue='redis://redis:6379',
                     max_http_buffer_size=10000000,
                     cors_allowed_origins='*', 
                     ping_timeout=5, 
@@ -200,7 +202,6 @@ def check_heartbeats():
                             })
                             
                         elif heartbeat.status == 'inactive' and time_diff > auto_available_timeout:
-                            logger.info(f"Checking heartbeats Case inactive robots : {heartbeat.robot.robot_id} time_diff : {time_diff}")
                             robot = heartbeat.robot
                             if robot and robot.status != 'available':
                                 logger.info(f"Robot {robot.robot_id} inactive > {auto_available_timeout/60} mins, marking available & canceling job.")
@@ -456,24 +457,19 @@ def check_and_assign_job():
         gevent.sleep(5)
         
 
-
 # เริ่มงาน background tasks
-
 gevent.spawn(check_and_assign_job)
 gevent.spawn(check_heartbeats)
 gevent.spawn(check_area_robot)
 gevent.spawn(check_battery_levels)
  
-def start_ws():
+def start_ws(): 
 	### IP WINDOWS HOST
-    socketio.run(app, host='0.0.0.0', port=5055, debug=False)
+    socketio.run(app, host='0.0.0.0', port=SERVICE_PORT, debug=False)
     
 if __name__ == '__main__':
- 
+    print("RUN")
+    # socketio.run(app, host='0.0.0.0', port=SERVICE_PORT, debug=False)
     p_ws = multiprocessing.Process(target=start_ws)
-
- 
     p_ws.start()
-
- 
     p_ws.join()

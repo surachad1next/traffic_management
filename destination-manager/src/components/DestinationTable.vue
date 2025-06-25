@@ -168,6 +168,7 @@ export default {
       editValues: {},
       newRobotId: '',
       selectedFile: null,
+      robots: [] 
     };
   },
   methods: {
