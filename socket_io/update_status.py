@@ -61,7 +61,7 @@ def handle_update_status(data):
         try:
             properties = json.loads(job.properties)
             assign_data = {
-                "message": "Success Transfer",
+                "message": "Success Pick Up",
                 "data": {
                         "lot_no": properties["ui"]["lot_no"],
                         "status": "R",
@@ -468,7 +468,7 @@ def canclealljob(robot_id,state='other'):
                 "message": "Cancel Transfer",
                 "data": {
                         "lot_no": properties["ui"]["lot_no"],
-                        "status": "E",
+                        "status": "CA",
                         "from_stocker": properties["ui"]["from_stocker"],
                         "from_level": properties["ui"]["from_level"],
                         "from_block": properties["ui"]["from_block"],

@@ -101,7 +101,7 @@ class PostTask(Resource):
 
             # ตรวจสอบสถานะการส่งข้อมูล
             if response.status_code == 200 or response.status_code == 202:
-                return {"message": "response message", "data": info_data}, 200
+                return {"message": "response message", "info": info_data}, 200
             else:
                 logger.info(f'Failed to assign task: error: {response.json()}')
                 log_action(f'Failed to assign task: error: {response.json()}')
